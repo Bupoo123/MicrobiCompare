@@ -1,120 +1,276 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>微生物数据分析工具（两两比较）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MicrobiCompare - 微生物数据分析工具</title>
   <!-- 引入 PapaParse 用于 CSV/TSV 解析 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <!-- 引入 Plotly 用于绘图 -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      margin: 20px;
-    }
-    h1, h3, h4 {
-      margin-bottom: 10px;
-    }
-    .container {
-      display: flex;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-    .left-panel {
-      flex: 1;
-      min-width: 750px;
-      margin-right: 20px;
-    }
-    .right-panel {
-      flex: 0 0 300px;
-    }
-    #chart {
-      width: 750px;
-      height: 500px;
-      border: 1px solid #ccc;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-bottom: 10px;
-    }
-    th, td {
-      border: 1px solid #aaa;
-      padding: 5px;
-      text-align: left;
-    }
-    input, select, button {
-      margin-bottom: 5px;
-    }
-    #allSamplesContainer {
-      margin-top: 30px;
-      border: 1px solid #ccc;
-      padding: 10px;
-    }
-  </style>
+  <!-- 引入图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- 引入样式文件 -->
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>微生物数据分析工具（两两比较）</h1>
-  <div>
-    <label>选择第一个文件 (CSV/TSV):
-      <input type="file" id="file1" accept=".csv,.tsv,.txt">
-    </label>
-    <br>
-    <label>选择第二个文件 (CSV/TSV):
-      <input type="file" id="file2" accept=".csv,.tsv,.txt">
-    </label>
-    <br>
-    <label>上传微生物列表 (CSV，包含 taxid、name、cn_name):
-      <input type="file" id="taxidFile" accept=".csv">
-    </label>
-    <span id="taxidStatus"></span>
-    <br>
-    <label>阈值:
-      <input type="number" id="threshold" value="0" step="any">
-    </label>
-    <br>
-    <label>选择指标:
-      <select id="metric">
-        <option value="reads_accum">reads_accum</option>
-        <option value="rpm">rpm</option>
-        <option value="abd">abd</option>
-      </select>
-    </label>
-    <br>
-    <label>选择样本:
-      <select id="sampleSelect"></select>
-    </label>
-    <br>
-    <button id="plotBtn">绘图</button>
-    <button id="saveBtn">保存图像和表格</button>
-    <button id="aggBtn">统计所有样本比较统计</button>
-  </div>
+  <div class="app-container">
+    <!-- 应用头部 -->
+    <header class="app-header">
+      <div class="app-title">
+        <img src="assets/images/logo.png" alt="MicrobiCompare Logo" class="app-logo">
+         <div class="app-title-content">
+           <div class="app-title-text" id="appTitle" style="cursor: pointer;">
+             <i class="fas fa-microscope"></i>
+             MicrobiCompare
+           </div>
+           <div class="app-subtitle">微生物数据分析工具（两两比较）</div>
+         </div>
+      </div>
+    </header>
 
-  <div class="container">
-    <div class="left-panel">
-      <div id="chart"></div>
-    </div>
-    <div class="right-panel">
-      <h3>病原体及RPM明细（当前样本）</h3>
-      <div id="tableContainer"></div>
-    </div>
-  </div>
+    <!-- 控制面板 -->
+    <section class="control-panel">
+      <div class="control-grid">
+        <div class="control-group">
+          <label class="control-label" for="file1">
+            <i class="fas fa-file-csv"></i>
+            选择第一个文件 (CSV/TSV)
+          </label>
+          <input type="file" id="file1" class="control-input" accept=".csv,.tsv,.txt">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label" for="file2">
+            <i class="fas fa-file-csv"></i>
+            选择第二个文件 (CSV/TSV)
+          </label>
+          <input type="file" id="file2" class="control-input" accept=".csv,.tsv,.txt">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label" for="taxidFile">
+            <i class="fas fa-list"></i>
+            上传微生物列表 (CSV，包含 taxid、name、cn_name)
+          </label>
+          <input type="file" id="taxidFile" class="control-input" accept=".csv">
+          <span id="taxidStatus" class="status-indicator status-info" style="display: none;"></span>
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label" for="threshold">
+            <i class="fas fa-filter"></i>
+            阈值
+          </label>
+          <input type="number" id="threshold" class="control-input" value="0" step="any">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label" for="metric">
+            <i class="fas fa-chart-line"></i>
+            选择指标
+          </label>
+          <select id="metric" class="control-select">
+            <option value="reads_accum">reads_accum</option>
+            <option value="rpm">rpm</option>
+            <option value="abd">abd</option>
+          </select>
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label" for="sampleSelect">
+            <i class="fas fa-vial"></i>
+            选择样本
+          </label>
+          <select id="sampleSelect" class="control-select">
+            <option value="">请先上传文件</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="button-group">
+        <button id="plotBtn" class="btn btn-primary">
+          <i class="fas fa-chart-scatter"></i>
+          绘图
+        </button>
+        <button id="saveBtn" class="btn btn-success">
+          <i class="fas fa-download"></i>
+          保存图像和表格
+        </button>
+        <button id="aggBtn" class="btn btn-secondary">
+          <i class="fas fa-calculator"></i>
+          统计所有样本比较
+        </button>
+      </div>
+      
+      <!-- 模板下载区域 -->
+      <div class="template-section">
+        <h4 class="template-title">
+          <i class="fas fa-file-download"></i>
+          下载模板文件
+        </h4>
+        <div class="template-buttons">
+          <button id="downloadTemplate1" class="btn btn-outline template-btn">
+            <i class="fas fa-file-csv"></i>
+            第一个文件模板
+          </button>
+          <button id="downloadTemplate2" class="btn btn-outline template-btn">
+            <i class="fas fa-file-csv"></i>
+            第二个文件模板
+          </button>
+          <button id="downloadMicrobeList" class="btn btn-outline template-btn">
+            <i class="fas fa-list"></i>
+            微生物列表模板
+          </button>
+        </div>
+      </div>
+    </section>
 
-  <!-- 所有样本比较统计区域 -->
-  <div id="allSamplesContainer">
-    <h3>所有样本比较统计</h3>
-    <div>
-      <h4>CSV1 高于 CSV2 3 倍以上</h4>
-      <div id="aggHighTableContainer"></div>
-    </div>
-    <div>
-      <h4>CSV1 低于 CSV2 3 倍以上</h4>
-      <div id="aggLowTableContainer"></div>
-    </div>
-    <button id="aggSaveBtn">保存所有样本统计结果</button>
-  </div>
+    <!-- 主要内容区域 -->
+    <section class="main-content">
+      <div class="chart-panel">
+        <h3 class="panel-title">
+          <i class="fas fa-chart-scatter"></i>
+          数据可视化
+        </h3>
+        <div id="chart" class="chart-container"></div>
+      </div>
+      
+      <div class="data-panel">
+        <h3 class="panel-title">
+          <i class="fas fa-table"></i>
+          病原体及RPM明细（当前样本）
+        </h3>
+        <div id="tableContainer">
+          <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+            <p>请先选择样本并点击绘图按钮</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <script>
+    <!-- 统计结果区域 -->
+    <section class="stats-container">
+      <h3 class="panel-title">
+        <i class="fas fa-chart-bar"></i>
+        所有样本比较统计
+      </h3>
+      
+      <div class="stats-grid">
+        <div class="stats-section">
+          <h4 class="stats-title">
+            <i class="fas fa-arrow-up" style="color: var(--success-color);"></i>
+            CSV1 高于 CSV2 3 倍以上
+          </h4>
+          <div id="aggHighTableContainer">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+              <i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 8px; opacity: 0.5;"></i>
+              <p>请先进行统计分析</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stats-section">
+          <h4 class="stats-title">
+            <i class="fas fa-arrow-down" style="color: var(--danger-color);"></i>
+            CSV1 低于 CSV2 3 倍以上
+          </h4>
+          <div id="aggLowTableContainer">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+              <i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 8px; opacity: 0.5;"></i>
+              <p>请先进行统计分析</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="button-group" style="margin-top: 20px;">
+        <button id="aggSaveBtn" class="btn btn-outline">
+          <i class="fas fa-file-export"></i>
+          保存所有样本统计结果
+        </button>
+      </div>
+     </section>
+   </div>
+
+   <!-- 软件介绍模态框 -->
+   <div id="aboutModal" class="modal">
+     <div class="modal-content">
+       <div class="modal-header">
+         <h2 class="modal-title">
+           <i class="fas fa-microscope"></i>
+           MicrobiCompare 软件介绍
+         </h2>
+         <span class="modal-close">&times;</span>
+       </div>
+       <div class="modal-body">
+         <div class="about-section">
+           <h3><i class="fas fa-info-circle"></i> 软件简介</h3>
+           <p>MicrobiCompare 是一款专业的微生物数据分析工具，专门用于快速比较两组病原体mNGS或tNGS数据。该工具支持用户自定义病原体panel，提供直观的数据可视化界面，帮助研究人员快速识别和分析不同样本间的病原体差异，为微生物学研究提供高效的数据处理解决方案。</p>
+         </div>
+         
+         <div class="about-section">
+           <h3><i class="fas fa-cogs"></i> 主要功能</h3>
+           <ul class="feature-list">
+             <li><strong>mNGS/tNGS数据比较：</strong>快速比较两组病原体测序数据，识别差异</li>
+             <li><strong>自定义病原体panel：</strong>支持用户上传自定义的病原体列表进行筛选分析</li>
+             <li><strong>多指标分析：</strong>支持reads_accum、rpm、abd等多种测序指标分析</li>
+             <li><strong>智能样本匹配：</strong>自动识别两个数据文件中的共同样本进行对比</li>
+             <li><strong>可视化分析：</strong>生成对数坐标散点图，直观展示病原体丰度差异</li>
+             <li><strong>阈值过滤：</strong>可设置数据过滤阈值，聚焦高置信度结果</li>
+             <li><strong>批量统计分析：</strong>支持多样本批量比较和统计分析</li>
+             <li><strong>结果导出：</strong>支持图表和数据的多种格式导出，便于报告撰写</li>
+           </ul>
+         </div>
+         
+         <div class="about-section">
+           <h3><i class="fas fa-chart-line"></i> 分析流程</h3>
+           <ol class="process-list">
+             <li>上传两组mNGS/tNGS测序数据文件（CSV/TSV格式）</li>
+             <li>上传自定义病原体panel列表（可选）</li>
+             <li>选择分析指标（reads_accum、rpm或abd）</li>
+             <li>设置数据过滤阈值，过滤低置信度结果</li>
+             <li>选择要比较的样本</li>
+             <li>生成病原体丰度对比散点图</li>
+             <li>查看详细的病原体RPM数据表格</li>
+             <li>进行批量统计分析，识别显著差异</li>
+             <li>导出分析结果和可视化图表</li>
+           </ol>
+         </div>
+         
+         <div class="about-section">
+           <h3><i class="fas fa-download"></i> 模板文件</h3>
+           <p>软件提供标准格式的模板文件，适用于mNGS/tNGS数据分析：</p>
+           <ul class="template-list">
+             <li><strong>第一个文件模板：</strong>包含样本ID、taxid、病原体名称、reads_accum、rpm、abd等mNGS/tNGS测序数据字段</li>
+             <li><strong>第二个文件模板：</strong>用于对比分析的mNGS/tNGS测序数据文件</li>
+             <li><strong>病原体panel模板：</strong>包含taxid、英文名称、中文名称的自定义病原体筛选列表</li>
+           </ul>
+         </div>
+         
+         <div class="about-section">
+           <h3><i class="fas fa-lightbulb"></i> 使用建议</h3>
+           <ul class="tips-list">
+             <li>确保mNGS/tNGS数据文件格式正确，包含样本ID、taxid、病原体名称等必要字段</li>
+             <li>建议先下载模板文件，按照标准格式准备测序数据</li>
+             <li>根据测序深度和置信度要求合理设置阈值参数</li>
+             <li>利用自定义病原体panel功能可以聚焦特定病原体分析</li>
+             <li>建议使用RPM指标进行丰度比较，更准确反映病原体相对丰度</li>
+             <li>定期保存分析结果，便于后续数据挖掘和报告撰写</li>
+           </ul>
+         </div>
+       </div>
+       <div class="modal-footer">
+         <button class="btn btn-primary modal-close-btn">
+           <i class="fas fa-check"></i>
+           我知道了
+         </button>
+       </div>
+     </div>
+   </div>
+
+   <script>
     // 全局变量
     let file1Data = null;
     let file2Data = null;
@@ -173,14 +329,28 @@
     document.getElementById('file1').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
+        const input = e.target;
+        input.disabled = true;
+        input.style.opacity = '0.6';
+        
         parseFile(file).then(data => {
           file1Data = data;
           file1Data.forEach(row => {
             row.sample = extractSampleName(row.sample__uid);
           });
           updateSampleSelect();
+          
+          // 显示成功状态
+          const status = document.createElement('span');
+          status.className = 'status-indicator status-success';
+          status.innerHTML = '<i class="fas fa-check"></i> 文件1已加载';
+          input.parentNode.appendChild(status);
+          
         }).catch(err => {
           alert("解析文件1出错: " + err);
+        }).finally(() => {
+          input.disabled = false;
+          input.style.opacity = '1';
         });
       }
     });
@@ -189,14 +359,28 @@
     document.getElementById('file2').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
+        const input = e.target;
+        input.disabled = true;
+        input.style.opacity = '0.6';
+        
         parseFile(file).then(data => {
           file2Data = data;
           file2Data.forEach(row => {
             row.sample = extractSampleName(row.sample__uid);
           });
           updateSampleSelect();
+          
+          // 显示成功状态
+          const status = document.createElement('span');
+          status.className = 'status-indicator status-success';
+          status.innerHTML = '<i class="fas fa-check"></i> 文件2已加载';
+          input.parentNode.appendChild(status);
+          
         }).catch(err => {
           alert("解析文件2出错: " + err);
+        }).finally(() => {
+          input.disabled = false;
+          input.style.opacity = '1';
         });
       }
     });
@@ -205,10 +389,18 @@
     document.getElementById('taxidFile').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
+        const statusElement = document.getElementById('taxidStatus');
+        statusElement.style.display = 'inline-flex';
+        statusElement.className = 'status-indicator status-info';
+        statusElement.innerHTML = '<div class="loading"><div class="spinner"></div> 正在解析...</div>';
+        
         parseTaxidFile(file).then(list => {
           taxidFilterList = list;
-          document.getElementById('taxidStatus').innerText = `已上传 ${list.length} 个 taxid`;
+          statusElement.className = 'status-indicator status-success';
+          statusElement.innerHTML = `<i class="fas fa-check"></i> 已上传 ${list.length} 个 taxid`;
         }).catch(err => {
+          statusElement.className = 'status-indicator status-warning';
+          statusElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 解析出错: ${err}`;
           alert("解析微生物列表出错: " + err);
         });
       }
@@ -317,19 +509,30 @@
 
     // 更新当前样本右侧表格，显示所有病原体及其 RPM
     function updateTable(merged) {
-      let html = '<table><tr><th>病原体</th><th>文件1 RPM</th><th>文件2 RPM</th></tr>';
+      if (merged.length === 0) {
+        document.getElementById('tableContainer').innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <i class="fas fa-exclamation-circle" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+            <p>当前样本无符合条件的数据</p>
+          </div>
+        `;
+        return;
+      }
+      
+      let html = '<table class="data-table"><tr><th>病原体</th><th>文件1 RPM</th><th>文件2 RPM</th></tr>';
       merged.forEach(row => {
-        html += `<tr><td>${row.cn_name}</td><td>${row.rpm1}</td><td>${row.rpm2}</td></tr>`;
+        html += `<tr><td>${row.cn_name}</td><td>${row.rpm1.toFixed(2)}</td><td>${row.rpm2.toFixed(2)}</td></tr>`;
       });
       html += '</table>';
       document.getElementById('tableContainer').innerHTML = html;
     }
 
-    // “绘图”按钮事件（针对当前选择的样本）
+    // "绘图"按钮事件（针对当前选择的样本）
     document.getElementById('plotBtn').addEventListener('click', function() {
       const selectedSample = document.getElementById('sampleSelect').value;
       const metric = document.getElementById('metric').value;
       const threshold = parseFloat(document.getElementById('threshold').value) || 0;
+      
       if (!selectedSample) {
         alert("请选择样本");
         return;
@@ -338,11 +541,24 @@
         alert("请先上传两个文件");
         return;
       }
-      const merged = mergeData(selectedSample, metric, threshold);
-      mergedData = merged;
-      chartData = plotChart(merged, metric, selectedSample);
-      updateTable(merged);
-      tableData = merged;
+      
+      const plotBtn = document.getElementById('plotBtn');
+      const originalText = plotBtn.innerHTML;
+      plotBtn.disabled = true;
+      plotBtn.innerHTML = '<div class="loading"><div class="spinner"></div> 正在绘图...</div>';
+      
+      try {
+        const merged = mergeData(selectedSample, metric, threshold);
+        mergedData = merged;
+        chartData = plotChart(merged, metric, selectedSample);
+        updateTable(merged);
+        tableData = merged;
+      } catch (error) {
+        alert("绘图过程中出现错误: " + error.message);
+      } finally {
+        plotBtn.disabled = false;
+        plotBtn.innerHTML = originalText;
+      }
     });
 
     // “保存图像和表格”按钮事件（针对当前样本结果）
@@ -438,9 +654,9 @@
 
     // 更新所有样本统计表格显示（两个组）
     function updateAggTables(highGroup, lowGroup) {
-      let highHtml = '<table><tr><th>病原体</th><th>样本数</th><th>CSV1 平均 RPM</th><th>CSV2 平均 RPM</th><th>比值 (CSV1/CSV2)</th></tr>';
+      let highHtml = '<table class="data-table"><tr><th>病原体</th><th>样本数</th><th>CSV1 平均 RPM</th><th>CSV2 平均 RPM</th><th>比值 (CSV1/CSV2)</th></tr>';
       if (highGroup.length === 0) {
-        highHtml += '<tr><td colspan="5">无满足条件结果</td></tr>';
+        highHtml += '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">无满足条件结果</td></tr>';
       } else {
         highGroup.forEach(item => {
           highHtml += `<tr><td>${item.cn_name}</td><td>${item.sampleCount}</td><td>${item.avgCSV1.toFixed(2)}</td><td>${item.avgCSV2.toFixed(2)}</td><td>${(item.ratio===Infinity ? "∞" : item.ratio.toFixed(2))}</td></tr>`;
@@ -449,9 +665,9 @@
       highHtml += '</table>';
       document.getElementById('aggHighTableContainer').innerHTML = highHtml;
       
-      let lowHtml = '<table><tr><th>病原体</th><th>样本数</th><th>CSV1 平均 RPM</th><th>CSV2 平均 RPM</th><th>比值 (CSV1/CSV2)</th></tr>';
+      let lowHtml = '<table class="data-table"><tr><th>病原体</th><th>样本数</th><th>CSV1 平均 RPM</th><th>CSV2 平均 RPM</th><th>比值 (CSV1/CSV2)</th></tr>';
       if (lowGroup.length === 0) {
-        lowHtml += '<tr><td colspan="5">无满足条件结果</td></tr>';
+        lowHtml += '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">无满足条件结果</td></tr>';
       } else {
         lowGroup.forEach(item => {
           lowHtml += `<tr><td>${item.cn_name}</td><td>${item.sampleCount}</td><td>${item.avgCSV1.toFixed(2)}</td><td>${item.avgCSV2.toFixed(2)}</td><td>${item.ratio.toFixed(2)}</td></tr>`;
@@ -461,7 +677,7 @@
       document.getElementById('aggLowTableContainer').innerHTML = lowHtml;
     }
 
-    // “保存所有样本统计结果”按钮事件
+    // "保存所有样本统计结果"按钮事件
     document.getElementById('aggSaveBtn').addEventListener('click', function() {
       if (((!aggHighData || aggHighData.length === 0) && (!aggLowData || aggLowData.length === 0))) {
         alert("请先统计所有样本比较结果");
@@ -484,7 +700,104 @@
       link.click();
       document.body.removeChild(link);
     });
-  </script>
+
+    // 模板下载功能 - 使用内嵌数据避免网络请求
+    function downloadTemplate(templateType, filename) {
+      let csvContent = '';
+      
+      switch(templateType) {
+        case 'file1':
+          csvContent = `sample__uid,taxid,cn_name,reads_accum,rpm,abd
+sample-001-2024-01-01,12345,大肠杆菌,1500,25.5,0.15
+sample-001-2024-01-01,67890,金黄色葡萄球菌,800,13.6,0.08
+sample-002-2024-01-02,12345,大肠杆菌,2000,34.2,0.20
+sample-002-2024-01-02,11111,肺炎链球菌,1200,20.5,0.12`;
+          break;
+        case 'file2':
+          csvContent = `sample__uid,taxid,cn_name,reads_accum,rpm,abd
+sample-001-2024-01-01,12345,大肠杆菌,1800,30.8,0.18
+sample-001-2024-01-01,67890,金黄色葡萄球菌,600,10.3,0.06
+sample-002-2024-01-02,12345,大肠杆菌,2200,37.6,0.22
+sample-002-2024-01-02,22222,流感嗜血杆菌,900,15.4,0.09`;
+          break;
+        case 'microbe':
+          csvContent = `taxid,name,cn_name
+12345,Escherichia coli,大肠杆菌
+67890,Staphylococcus aureus,金黄色葡萄球菌
+11111,Streptococcus pneumoniae,肺炎链球菌
+22222,Haemophilus influenzae,流感嗜血杆菌
+33333,Mycobacterium tuberculosis,结核分枝杆菌`;
+          break;
+        default:
+          alert('未知的模板类型');
+          return;
+      }
+      
+      try {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('下载模板失败:', error);
+        alert('下载模板失败，请重试');
+      }
+    }
+
+    // 模板下载按钮事件
+    document.getElementById('downloadTemplate1').addEventListener('click', function() {
+      downloadTemplate('file1', 'sample_file1_template.csv');
+    });
+
+    document.getElementById('downloadTemplate2').addEventListener('click', function() {
+      downloadTemplate('file2', 'sample_file2_template.csv');
+    });
+
+     document.getElementById('downloadMicrobeList').addEventListener('click', function() {
+       downloadTemplate('microbe', 'microbe_list_template.csv');
+     });
+
+     // 软件介绍模态框功能
+     const modal = document.getElementById('aboutModal');
+     const appTitle = document.getElementById('appTitle');
+     const closeBtn = document.querySelector('.modal-close');
+     const closeBtnFooter = document.querySelector('.modal-close-btn');
+
+     // 点击标题打开模态框
+     appTitle.addEventListener('click', function() {
+       modal.style.display = 'block';
+       document.body.style.overflow = 'hidden'; // 防止背景滚动
+     });
+
+     // 关闭模态框的函数
+     function closeModal() {
+       modal.style.display = 'none';
+       document.body.style.overflow = 'auto'; // 恢复背景滚动
+     }
+
+     // 点击关闭按钮关闭模态框
+     closeBtn.addEventListener('click', closeModal);
+     closeBtnFooter.addEventListener('click', closeModal);
+
+     // 点击模态框背景关闭模态框
+     modal.addEventListener('click', function(e) {
+       if (e.target === modal) {
+         closeModal();
+       }
+     });
+
+     // 按ESC键关闭模态框
+     document.addEventListener('keydown', function(e) {
+       if (e.key === 'Escape' && modal.style.display === 'block') {
+         closeModal();
+       }
+     });
+   </script>
 </body>
 </html>
 
